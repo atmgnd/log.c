@@ -24,6 +24,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     # using Clang
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     set(CMAKE_CXX_FLAGS "-std=c++11 -Wall ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_C_FLAGS "-std=c99 -Wall  -D_GNU_SOURCE ${CMAKE_CXX_FLAGS}")
     link_libraries(pthread)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     # using Intel C++
