@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017 rxi
+ * Copyright (c) 2019 atmgnd
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -25,112 +26,168 @@
 #include <stdarg.h>
 #include <string.h>
 #include <time.h>
-
 #include "log.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+
+#ifdef _WIN32
+#include <Windows.h>
+#include <sys/timeb.h>  
+#else
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <pthread.h>
+#include <sys/time.h>
+#endif
 
 static struct {
-  void *udata;
-  log_LockFn lock;
-  FILE *fp;
-  int level;
-  int quiet;
-} L;
-
+	int level;
+	FILE *fp;
+	int quiet;
+#ifdef _MSC_VER
+	CRITICAL_SECTION lock;
+#else
+	pthread_mutex_t lock;
+#endif
+} L = { 0xFF };
 
 static const char *level_names[] = {
   "TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"
 };
 
-#ifdef LOG_USE_COLOR
-static const char *level_colors[] = {
-  "\x1b[94m", "\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m", "\x1b[35m"
-};
+static void lock(void) {
+#ifdef _MSC_VER
+	EnterCriticalSection(&L.lock);
+#else
+	pthread_mutex_lock(&L.lock);
 #endif
-
-
-static void lock(void)   {
-  if (L.lock) {
-    L.lock(L.udata, 1);
-  }
 }
-
 
 static void unlock(void) {
-  if (L.lock) {
-    L.lock(L.udata, 0);
-  }
+#ifdef _MSC_VER
+	LeaveCriticalSection(&L.lock);
+#else
+	pthread_mutex_unlock(&L.lock);
+#endif
 }
-
-
-void log_set_udata(void *udata) {
-  L.udata = udata;
-}
-
-
-void log_set_lock(log_LockFn fn) {
-  L.lock = fn;
-}
-
 
 void log_set_fp(FILE *fp) {
-  L.fp = fp;
+	L.fp = fp;
 }
 
-
 void log_set_level(int level) {
-  L.level = level;
+	L.level = level;
 }
 
 
 void log_set_quiet(int enable) {
-  L.quiet = enable ? 1 : 0;
+	L.quiet = enable ? 1 : 0;
 }
 
-
-void log_log(int level, const char *file, int line, const char *fmt, ...) {
-  if (level < L.level) {
-    return;
-  }
-
-  /* Acquire lock */
-  lock();
-
-  /* Get current time */
-  time_t t = time(NULL);
-  struct tm *lt = localtime(&t);
-
-  /* Log to stderr */
-  if (!L.quiet) {
-    va_list args;
-    char buf[16];
-    buf[strftime(buf, sizeof(buf), "%H:%M:%S", lt)] = '\0';
-#ifdef LOG_USE_COLOR
-    fprintf(
-      stderr, "%s %s%-5s\x1b[0m \x1b[90m%s:%d:\x1b[0m ",
-      buf, level_colors[level], level_names[level], file, line);
+// os
+static unsigned int thread_id() {
+#ifdef _MSC_VER
+	return GetCurrentThreadId();
 #else
-    fprintf(stderr, "%s %-5s %s:%d: ", buf, level_names[level], file, line);
+	return (unsigned int)(syscall(__NR_gettid));
 #endif
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
-    fprintf(stderr, "\n");
-    fflush(stderr);
-  }
+}
 
-  /* Log to file */
-  if (L.fp) {
-    va_list args;
-    char buf[32];
-    buf[strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", lt)] = '\0';
-    fprintf(L.fp, "%s %-5s %s:%d: ", buf, level_names[level], file, line);
-    va_start(args, fmt);
-    vfprintf(L.fp, fmt, args);
-    va_end(args);
-    fprintf(L.fp, "\n");
-    fflush(L.fp);
-  }
+static unsigned int file_size(const char *path) {
+#ifdef _MSC_VER
+	struct _stat buf;
+	if (!_stat(path, &buf)) {
+#else
+	struct stat buf;
+	if (!stat(path, &buf)) {
+#endif
+		return buf.st_size;
+	}
 
-  /* Release lock */
-  unlock();
+	return 0;
+}
+
+void log_init(const char *path, unsigned int size)
+{
+	if (size > 0 && file_size(path) > size) {
+		L.fp = fopen(path, "wb+");
+	}
+	else {
+		L.fp = fopen(path, "ab+");
+	}
+
+#ifdef _MSC_VER
+	InitializeCriticalSection(&L.lock);
+#else
+	pthread_mutexattr_t attr;
+	int type;
+
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutexattr_gettype(&attr, &type);
+	pthread_mutex_init(&L.lock, &attr);
+	pthread_mutexattr_destroy(&attr);
+#endif
+	L.level = LOG_TRACE;
+	L.quiet = 0;
+}
+
+void log_log(int level, const char *fmt, ...) {
+	if (level < L.level) {
+		return;
+	}
+
+	/* Acquire lock */
+	lock();
+
+	/* Get current time */
+  //   time_t t = time(NULL);
+  //   struct tm *lt;// = localtime(&t);
+	int ms;
+	struct tm lt;
+
+#ifdef _MSC_VER
+	struct timeb t;
+
+	ftime(&t);
+	localtime_s(&lt, &t.time);
+	ms = t.millitm;
+#else
+	struct timeval tv;
+
+	gettimeofday(&tv, NULL);
+	localtime_r(&tv.tv_sec, &lt);
+	ms = (int)(tv.tv_usec / 1000);
+#endif
+
+	char buf[32];
+
+	sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d.%03d", lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday,
+		lt.tm_hour, lt.tm_min, lt.tm_sec, ms);
+
+	/* Log to stderr */
+	if (!L.quiet) { // TODO delete
+		va_list args;
+		fprintf(stderr, "%s %-5s [%d]: ", buf, level_names[level], thread_id());
+
+		va_start(args, fmt);
+		vfprintf(stderr, fmt, args);
+		va_end(args);
+		fprintf(stderr, "\n");
+		fflush(stderr);
+	}
+
+	/* Log to file */
+	if (L.fp) {
+		va_list args;
+		fprintf(L.fp, "%s %-5s [%d]: ", buf, level_names[level], thread_id());
+		va_start(args, fmt);
+		vfprintf(L.fp, fmt, args);
+		va_end(args);
+		fprintf(L.fp, "\n");
+		fflush(L.fp);
+	}
+
+	/* Release lock */
+	unlock();
 }
