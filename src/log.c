@@ -43,7 +43,6 @@
 static struct {
 	int level;
 	FILE *fp;
-	int quiet;
 #ifdef _MSC_VER
 	CRITICAL_SECTION lock;
 #else
@@ -77,11 +76,6 @@ void log_set_fp(FILE *fp) {
 
 void log_set_level(int level) {
 	L.level = level;
-}
-
-
-void log_set_quiet(int enable) {
-	L.quiet = enable ? 1 : 0;
 }
 
 // os
@@ -129,7 +123,6 @@ void log_init(const char *path, unsigned int size)
 	pthread_mutexattr_destroy(&attr);
 #endif
 	L.level = LOG_TRACE;
-	L.quiet = 0;
 }
 
 void log_log(int level, const char *fmt, ...) {
@@ -165,28 +158,15 @@ void log_log(int level, const char *fmt, ...) {
 	sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d.%03d", lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday,
 		lt.tm_hour, lt.tm_min, lt.tm_sec, ms);
 
-	/* Log to stderr */
-	if (!L.quiet) { // TODO delete
-		va_list args;
-		fprintf(stderr, "%s %-5s [%d]: ", buf, level_names[level], thread_id());
+	FILE *log2 = L.fp ? L.fp : stderr;
 
-		va_start(args, fmt);
-		vfprintf(stderr, fmt, args);
-		va_end(args);
-		fprintf(stderr, "\n");
-		fflush(stderr);
-	}
-
-	/* Log to file */
-	if (L.fp) {
-		va_list args;
-		fprintf(L.fp, "%s %-5s [%d]: ", buf, level_names[level], thread_id());
-		va_start(args, fmt);
-		vfprintf(L.fp, fmt, args);
-		va_end(args);
-		fprintf(L.fp, "\n");
-		fflush(L.fp);
-	}
+	va_list args;
+	fprintf(log2, "%s %-5s [%d]: ", buf, level_names[level], thread_id());
+	va_start(args, fmt);
+	vfprintf(log2, fmt, args);
+	va_end(args);
+	fprintf(log2, "\n");
+	fflush(log2);
 
 	/* Release lock */
 	unlock();
