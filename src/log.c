@@ -101,8 +101,7 @@ static unsigned int file_size(const char *path) {
 	return 0;
 }
 
-void log_init(const char *path, unsigned int size)
-{
+void log_init(const char *path, unsigned int size) {
 	if (size > 0 && file_size(path) > size) {
 		L.fp = fopen(path, "wb+");
 	}
@@ -134,8 +133,6 @@ void log_log(int level, const char *fmt, ...) {
 	lock();
 
 	/* Get current time */
-  //   time_t t = time(NULL);
-  //   struct tm *lt;// = localtime(&t);
 	int ms;
 	struct tm lt;
 
