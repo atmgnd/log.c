@@ -20,16 +20,9 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <time.h>
 #include "log.h"
-#include <sys/types.h>
-#include <sys/stat.h>
-
+#include <stdlib.h>
+#include <string.h>
 #ifdef _WIN32
 #include <Windows.h>
 #include <sys/timeb.h>  
@@ -39,6 +32,9 @@
 #include <pthread.h>
 #include <sys/time.h>
 #endif
+#include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 static struct {
 	int level;
@@ -70,16 +66,11 @@ static void unlock(void) {
 #endif
 }
 
-void log_set_fp(FILE *fp) {
-	L.fp = fp;
-}
-
 void log_set_level(int level) {
 	L.level = level;
 }
 
-// os
-static unsigned int thread_id() {
+static inline unsigned int thread_id() {
 #ifdef _MSC_VER
 	return GetCurrentThreadId();
 #else
@@ -124,15 +115,27 @@ void log_init(const char *path, unsigned int size) {
 	L.level = LOG_TRACE;
 }
 
+void log_cleanup() {
+	if (L.fp) {
+		fclose(L.fp);
+	}
+
+	if (L.level != 0xFF) {
+#ifdef _MSC_VER
+		DeleteCriticalSection(&L.lock);
+#else
+		pthread_mutex_destroy(&L.lock);
+#endif
+	}
+}
+
 void log_log(int level, const char *fmt, ...) {
 	if (level < L.level) {
 		return;
 	}
 
-	/* Acquire lock */
 	lock();
 
-	/* Get current time */
 	int ms;
 	struct tm lt;
 
@@ -149,22 +152,17 @@ void log_log(int level, const char *fmt, ...) {
 	localtime_r(&tv.tv_sec, &lt);
 	ms = (int)(tv.tv_usec / 1000);
 #endif
-
-	char buf[32];
-
-	sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d.%03d", lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday,
-		lt.tm_hour, lt.tm_min, lt.tm_sec, ms);
-
 	FILE *log2 = L.fp ? L.fp : stderr;
 
 	va_list args;
-	fprintf(log2, "%s %-5s [%d]: ", buf, level_names[level], thread_id());
+	fprintf(log2, "%04d-%02d-%02d %02d:%02d:%02d.%03d" " %-5s [%d]: ",
+		lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec, ms,
+		level_names[level], thread_id());
 	va_start(args, fmt);
 	vfprintf(log2, fmt, args);
 	va_end(args);
 	fprintf(log2, "\n");
 	fflush(log2);
 
-	/* Release lock */
 	unlock();
 }
