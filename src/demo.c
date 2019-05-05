@@ -14,7 +14,7 @@ int main()
 #endif
 
 	log_log(LOG_TRACE, "Hello %s", "world");
-	log_log(LOG_DEBUG, "Hello %s", "world");
+	LOGD("%s", "Hello world");
 
 #ifdef _MSC_VER
 	system("pause");
