@@ -8,9 +8,9 @@
 int main()
 {
 #ifdef _MSC_VER
-	log_init("D:\\ttmp\\xx.log", 0);
+	log_init("D:\\ttmp\\xx.log", 5 * 1024);
 #else
-	log_init("./xx.log", 0);
+	log_init("./xx.log", 5 * 1024);
 #endif
 
 	log_log(LOG_TRACE, "Hello %s", "world");

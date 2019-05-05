@@ -23,9 +23,10 @@
 #include "log.h"
 #include <stdlib.h>
 #include <string.h>
-#ifdef _WIN32
+#ifdef _MSC_VER
 #include <Windows.h>
-#include <sys/timeb.h>  
+#include <sys/timeb.h>
+#include <io.h>
 #else
 #include <unistd.h>
 #include <sys/syscall.h>
@@ -39,6 +40,7 @@
 static struct {
 	int level;
 	FILE *fp;
+	int size;
 #ifdef _MSC_VER
 	CRITICAL_SECTION lock;
 #else
@@ -78,26 +80,8 @@ static inline unsigned int thread_id() {
 #endif
 }
 
-static unsigned int file_size(const char *path) {
-#ifdef _MSC_VER
-	struct _stat buf;
-	if (!_stat(path, &buf)) {
-#else
-	struct stat buf;
-	if (!stat(path, &buf)) {
-#endif
-		return buf.st_size;
-	}
-
-	return 0;
-}
-
-void log_init(const char *path, unsigned int size) {
-	if (size > 0 && file_size(path) > size) {
-		L.fp = fopen(path, "wb+");
-	} else {
-		L.fp = fopen(path, "ab+");
-	}
+void log_init(const char *path, int size) {
+	L.fp = fopen(path, "ab+");
 
 #ifdef _MSC_VER
 	InitializeCriticalSection(&L.lock);
@@ -111,6 +95,7 @@ void log_init(const char *path, unsigned int size) {
 	pthread_mutex_init(&L.lock, &attr);
 	pthread_mutexattr_destroy(&attr);
 #endif
+	L.size = size;
 	L.level = LOG_TRACE;
 }
 
@@ -134,6 +119,14 @@ void log_log(int level, const char *fmt, ...) {
 	}
 
 	lock();
+
+	if (L.size > 0 && L.fp && ftell(L.fp) > L.size) {
+#ifdef _MSC_VER
+		_chsize_s(_fileno(L.fp), 0);
+#else
+		ftruncate(fileno(L.fp), 0);
+#endif
+	}
 
 	int ms;
 	struct tm lt;

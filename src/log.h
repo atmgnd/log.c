@@ -23,7 +23,7 @@ enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
 
 void log_set_level(int level);
 
-void log_init(const char *path, unsigned int size);
+void log_init(const char *path, int size);
 void log_cleanup();
 void log_log(int level, const char *fmt, ...);
 
