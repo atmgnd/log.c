@@ -95,8 +95,7 @@ static unsigned int file_size(const char *path) {
 void log_init(const char *path, unsigned int size) {
 	if (size > 0 && file_size(path) > size) {
 		L.fp = fopen(path, "wb+");
-	}
-	else {
+	} else {
 		L.fp = fopen(path, "ab+");
 	}
 
