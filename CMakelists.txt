@@ -14,7 +14,7 @@ function(assign_source_group)
     endforeach()
 endfunction(assign_source_group)
 
-set (XXX_PROJECT_NAME logcs)
+set (XXX_PROJECT_NAME logc)
 
 project(${XXX_PROJECT_NAME})
 set (CMAKE_BUILD_TYPE Debug)
@@ -38,22 +38,28 @@ endif()
 # add_subdirectory()
 
 # RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-file (GLOB_RECURSE sources
-    src/*.cpp
-    src/*.cxx
-    src/*.c
-)
-file (GLOB_RECURSE headers
-    src/*.h
-    src/*.hxx
-    src/*.hpp
+file (GLOB_RECURSE logcsource
+    src/log.c
 )
 
-add_executable(${XXX_PROJECT_NAME} ${sources} ${headers})
-# add_library(${XXX_PROJECT_NAME} ${sources} ${headers})
+file (GLOB_RECURSE logcheaders
+    src/log.h
+)
 
-assign_source_group(${sources})
-assign_source_group(${headers})
+file (GLOB_RECURSE demosource
+    src/demo.c
+)
+
+set (XXX_PROJECT_LOGC logc)
+add_library(${XXX_PROJECT_LOGC} SHARED ${logcsource} ${logcheaders})
+
+set (XXX_PROJECT_DEMO demo)
+add_executable(${XXX_PROJECT_DEMO} ${demosource} ${logcheaders})
+target_link_libraries(${XXX_PROJECT_DEMO} PUBLIC logc)
+
+assign_source_group(${logcsource})
+assign_source_group(${logcheaders})
+assign_source_group(${demosource})
 
 # include_directories("${PROJECT_BINARY_DIR}")
 # cmake -G"Visual Studio 14"

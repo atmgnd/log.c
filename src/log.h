@@ -8,6 +8,9 @@
 
 #ifndef LOG_H
 #define LOG_H
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -27,4 +30,7 @@ void log_init(const char *path, int size);
 void log_cleanup();
 void log_log(int level, const char *fmt, ...);
 
+#ifdef __cplusplus
+}
+#endif
 #endif
