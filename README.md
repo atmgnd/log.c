@@ -19,6 +19,12 @@ All logs below the given level will be ignored. By default the level is
 #### log_log(int level, const char *fmt, ...)
 print log in printf like way
 
+### log_register_cmd(const char *command, lsh_fn fn);
+register a command to telnet console
+
+### log_server_loop(int port);
+start the main telnet loop
+
 ## License
 This library is free software; you can redistribute it and/or modify it under
 the terms of the MIT license. See [LICENSE](LICENSE) for details.
