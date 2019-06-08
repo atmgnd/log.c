@@ -310,11 +310,11 @@ void log_log(int level, const char *fmt, ...) {
 #else
 	struct timeval tv;
 #endif
-	int ms, log_size;
+#define _LOG_BUF_SIZE 128
+	int ms, log_size, buf_size = _LOG_BUF_SIZE;
 	struct tm lt;
 	FILE *log2;
-#define _LOG_BUF_SIZE 64
-	char logbuf[_LOG_BUF_SIZE], *logbuf2 = NULL;
+	char logbuf[_LOG_BUF_SIZE], *logbuf2 = NULL, *logbuf3 = logbuf;
 	va_list args;
 
 	if (level < L.level) return;
@@ -337,49 +337,37 @@ void log_log(int level, const char *fmt, ...) {
 	localtime_r(&tv.tv_sec, &lt);
 	ms = (int)(tv.tv_usec / 1000);
 #endif
-	log2 = L.stdlog ? (L.fp ? L.fp : stderr) : NULL;
 
-	log_size = snprintf(logbuf, _LOG_BUF_SIZE, "%04d-%02d-%02d %02d:%02d:%02d.%03d" " %-5s [%d]: ",
-		lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec, ms,
-		level_names[level], thread_id());
-	if (log2) {
-		fwrite(logbuf, 1, log_size, log2);
+	for (;;) {
+		log_size = snprintf(logbuf3, buf_size, "%04d-%02d-%02d %02d:%02d:%02d.%03d" " %-5s [%d]: ",
+			lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec, ms,
+			level_names[level], thread_id());
+		va_start(args, fmt);
+		log_size += vsnprintf(logbuf3 + log_size, buf_size - log_size, fmt, args);
+		va_end(args);
+
+		if (log_size >= buf_size && logbuf2 == NULL && (logbuf2 = malloc(log_size + 1)) != NULL) {
+			logbuf3 = logbuf2;
+			buf_size = log_size + 1;
+			continue;
+		}
+
+		break;
 	}
-	if (L.tel_client) {
-		send(L.tel_client, logbuf, log_size, 0);
+
+	if ((log2 = L.stdlog ? (L.fp ? L.fp : stderr) : NULL) != NULL) {
+		fwrite(logbuf3, 1, log_size, log2);
+		fprintf(log2, "\n");
+		fflush(log2);
 	}
-	va_start(args, fmt);
-	if ((log_size = vsnprintf(logbuf, _LOG_BUF_SIZE, fmt, args)) >= _LOG_BUF_SIZE) {
-		logbuf2 = malloc(log_size);
+
+	if (L.tel_client != INVALID_SOCKET) {
+		send(L.tel_client, logbuf3, log_size, 0);
+		send(L.tel_client, "\r\n", 2, 0);
 	}
 
 	if (logbuf2) {
-		log_size = vsnprintf(logbuf2, _LOG_BUF_SIZE, fmt, args);
-		if (log2) {
-			fwrite(logbuf2, 1, log_size, log2);
-		}
-		if (L.tel_client) {
-			send(L.tel_client, logbuf2, log_size, 0);
-		}
 		free(logbuf2);
-	} else {
-		if (log2){ 
-			fwrite(logbuf, 1, log_size, log2); 
-		}
-		if (L.tel_client) {
-			send(L.tel_client, logbuf, log_size, 0);
-		}
-	}
-
-	va_end(args);
-	if (log2) {
-		fprintf(log2, "\n");
-	}
-	if (L.tel_client) {
-		send(L.tel_client, "\r\n", 2, 0);
-	}
-	if (log2) {
-		fflush(log2);
 	}
 
 	unlock();

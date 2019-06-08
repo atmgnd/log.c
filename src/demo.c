@@ -36,7 +36,7 @@ test_print_thread(void *c)
 {
 	static int count = 0;
 	for(;;)
-		LOGT("thread %d, count %d", *(int *)c, count++);
+		LOGT("thread %d, count %d xx", *(int *)c, count++);
 #ifndef _MSC_VER
 	return NULL;
 #endif
