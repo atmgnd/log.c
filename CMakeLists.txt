@@ -56,11 +56,16 @@ file (GLOB_RECURSE demosource
 )
 
 set (XXX_PROJECT_LOGC logc)
-add_library(${XXX_PROJECT_LOGC} SHARED ${logcsource} ${logcheaders})
+add_library(${XXX_PROJECT_LOGC} STATIC ${logcsource} ${logcheaders})
 
 set (XXX_PROJECT_DEMO demo)
 add_executable(${XXX_PROJECT_DEMO} ${demosource} ${logcheaders})
-target_link_libraries(${XXX_PROJECT_DEMO} PUBLIC logc)
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    target_link_libraries(${XXX_PROJECT_DEMO} PUBLIC logc ws2_32)
+else()
+    target_link_libraries(${XXX_PROJECT_DEMO} PUBLIC logc)
+endif()
+
 
 assign_source_group(${logcsource})
 assign_source_group(${logcheaders})

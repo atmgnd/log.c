@@ -15,7 +15,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdarg.h>
 
-enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
+enum { LOG_TRACE = 1, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
 
 #define LOGT(...) log_log(LOG_TRACE, __VA_ARGS__)
 #define LOGD(...) log_log(LOG_DEBUG, __VA_ARGS__)
@@ -29,6 +29,12 @@ void log_set_level(int level);
 void log_init(const char *path, int size);
 void log_cleanup();
 void log_log(int level, const char *fmt, ...);
+
+typedef int(*lsh_fn) (int argc, char **argv);
+
+int log_register_cmd(const char *command, lsh_fn fn);
+
+int log_server_loop(int port);
 
 #ifdef __cplusplus
 }
