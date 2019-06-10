@@ -56,7 +56,7 @@ file (GLOB_RECURSE demosource
 )
 
 set (XXX_PROJECT_LOGC logc)
-add_library(${XXX_PROJECT_LOGC} SHARED ${logcsource} ${logcheaders})
+add_library(${XXX_PROJECT_LOGC} STATIC ${logcsource} ${logcheaders})
 
 set (XXX_PROJECT_DEMO demo)
 add_executable(${XXX_PROJECT_DEMO} ${demosource} ${logcheaders})
