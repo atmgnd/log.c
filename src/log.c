@@ -63,9 +63,9 @@ typedef struct _lsh_cmd {
 
 static struct{
 	int level;
+	int tel_level;
 	FILE *fp;
 	int size;
-	int stdlog;
 	SOCKET tel_client;
 	lsh_cmd *cmd_list;
 	int cmd_count;
@@ -141,30 +141,24 @@ static int log_cmd_telog(void *p, int argc, char **args) {
 	return 0;
 }
 
-static int log_cmd_stdlog(void *p, int argc, char **args) {
-	char buf[64];
-	lock();
-	if (argc > 1) {
-		L.stdlog = (atoi(args[1]) != 0);
-	}
-	send(((inner_cmd_context *)p)->s, buf, snprintf(buf, 64, "stdlog %d\r\n", L.stdlog), 0);
-	unlock();
-
-	return 0;
-}
-
 static int log_cmd_level(void *p, int argc, char **args) {
 	char buf[64];
 	SOCKET s = ((inner_cmd_context *)p)->s;
 
 	lock();
-	if (argc > 1) {
+	if (argc == 2) {
 		int level = atoi(args[1]);
 		if (level >= LOG_TRACE && level <= LOG_FATAL) {
 			L.level = level;
 		}
+	} else if (argc == 3 && strcmp(args[1], "tel") == 0) {
+		int level = atoi(args[2]);
+		if (level >= LOG_TRACE && level <= LOG_FATAL) {
+			L.tel_level = level;
+		}
 	}
-	send(s, buf, snprintf(buf, 64, "current level: %s, avaiable level:", level_names[L.level]), 0);
+	send(s, buf, snprintf(buf, 64, "current level: %s/%s, avaiable level:",
+		level_names[L.level], level_names[L.tel_level]), 0);
 	for (int i = LOG_TRACE; i <= LOG_FATAL; i++) {
 		send(s, buf, snprintf(buf, 64, " %s(%d)", level_names[i], i), 0);
 	}
@@ -206,16 +200,15 @@ void log_init(const char *path, int size) {
 	pthread_mutex_init(&L.lock, &attr);
 	pthread_mutexattr_destroy(&attr);
 #endif
-	L.stdlog = 1;
 	L.fp = fopen(path, "ab+");
 	L.size = size;
 	L.level = LOG_DEBUG;
+	L.tel_level = LOG_TRACE;
 	L.tel_client = INVALID_SOCKET;
 	L.cmd_list = L.cmd_list_predefined = NULL;
 	L.cmd_count = L.cmd_count_predefined = 0;
 	log_register_cmd_inner("exit", log_cmd_exit, 1);
 	log_register_cmd_inner("telog", log_cmd_telog, 1);
-	log_register_cmd_inner("stdlog", log_cmd_stdlog, 1);
 	log_register_cmd_inner("level", log_cmd_level, 1);
 	log_register_cmd_inner("help", log_cmd_help, 1);
 }
@@ -317,7 +310,7 @@ void log_log(int level, const char *fmt, ...) {
 	char logbuf[_LOG_BUF_SIZE], *logbuf2 = NULL, *logbuf3 = logbuf;
 	va_list args;
 
-	if (level < L.level) return;
+	if (level < L.level && level < L.tel_level) return;
 
 	lock();
 	if (L.size > 0 && L.fp && ftell(L.fp) > L.size) {
@@ -355,13 +348,14 @@ void log_log(int level, const char *fmt, ...) {
 		break;
 	}
 
-	if ((log2 = L.stdlog ? (L.fp ? L.fp : stderr) : NULL) != NULL) {
+	if (level >= L.level ) {
+		log2 = L.fp ? L.fp : stderr;
 		fwrite(logbuf3, 1, log_size, log2);
 		fprintf(log2, "\n");
 		fflush(log2);
 	}
 
-	if (L.tel_client != INVALID_SOCKET) {
+	if (level >= L.tel_level && L.tel_client != INVALID_SOCKET) {
 		send(L.tel_client, logbuf3, log_size, 0);
 		send(L.tel_client, "\r\n", 2, 0);
 	}
