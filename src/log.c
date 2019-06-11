@@ -310,7 +310,7 @@ void log_log(int level, const char *fmt, ...) {
 	char logbuf[_LOG_BUF_SIZE], *logbuf2 = NULL, *logbuf3 = logbuf;
 	va_list args;
 
-	if (level < L.level && level < L.tel_level) return;
+	if (level < L.level && (L.tel_client == INVALID_SOCKET || level < L.tel_level)) return;
 
 	lock();
 	if (L.size > 0 && L.fp && ftell(L.fp) > L.size) {
