@@ -80,5 +80,7 @@ int main(int argc, char **argv)
 
 	log_server_loop(5000);
 
+	LOGD("%d", (double)1); // generate a warnning message
+
 	return 0;
 }
