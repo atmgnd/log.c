@@ -6,8 +6,8 @@
  * under the terms of the MIT license. See `log.c` for details.
  */
 
-#ifndef LOG_H
-#define LOG_H
+#ifndef LOG_H_056A
+#define LOG_H_056A
 #ifdef __cplusplus
 extern "C" {
 #endif

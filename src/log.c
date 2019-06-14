@@ -207,10 +207,10 @@ void log_init(const char *path, int size) {
 	L.tel_client = INVALID_SOCKET;
 	L.cmd_list = L.cmd_list_predefined = NULL;
 	L.cmd_count = L.cmd_count_predefined = 0;
-	log_register_cmd_inner("exit", log_cmd_exit, 1);
-	log_register_cmd_inner("telog", log_cmd_telog, 1);
-	log_register_cmd_inner("level", log_cmd_level, 1);
-	log_register_cmd_inner("help", log_cmd_help, 1);
+	log_register_cmd_inner("exit", (void *)log_cmd_exit, 1);
+	log_register_cmd_inner("telog", (void *)log_cmd_telog, 1);
+	log_register_cmd_inner("level", (void *)log_cmd_level, 1);
+	log_register_cmd_inner("help", (void *)log_cmd_help, 1);
 }
 
 void log_cleanup() {
@@ -242,7 +242,7 @@ static int log_register_cmd_inner(const char *command, void *fn, int prefined) {
 
 	if (strlen(command) >= 16) return -1;
 	lock();
-	cmd_list = realloc(cmd_list, sizeof(lsh_cmd) * (cmd_count + 1));
+	cmd_list = (lsh_cmd *)realloc(cmd_list, sizeof(lsh_cmd) * (cmd_count + 1));
 	if (cmd_list == NULL) {
 		unlock();
 		return -1;
@@ -274,7 +274,7 @@ static int log_register_cmd_inner(const char *command, void *fn, int prefined) {
 }
 
 int log_register_cmd(const char *command, lsh_fn fn) {
-	return log_register_cmd_inner(command, fn, 0);
+	return log_register_cmd_inner(command, (void *)fn, 0);
 }
 
 static void *log_find_cmd(const char *command, int predefined) {
@@ -339,7 +339,7 @@ void log_log(int level, const char *fmt, ...) {
 		log_size += vsnprintf(logbuf3 + log_size, buf_size - log_size, fmt, args);
 		va_end(args);
 
-		if (log_size >= buf_size && logbuf2 == NULL && (logbuf2 = malloc(log_size + 1)) != NULL) {
+		if (log_size >= buf_size && logbuf2 == NULL && (logbuf2 = (char *)malloc(log_size + 1)) != NULL) {
 			logbuf3 = logbuf2;
 			buf_size = log_size + 1;
 			continue;
@@ -409,7 +409,7 @@ static int clean_telnet_buffer(char * buf, int buflen) {
  */
 static char **lsh_split_line(char *line, int *pargc) {
 	int bufsize = LSH_TOK_BUFSIZE, position = 0;
-	char **tokens = malloc(bufsize * sizeof(char*));
+	char **tokens = (char **)malloc(bufsize * sizeof(char*));
 	char *token, *saveptr, **tokens_backup;
 
 	if (!tokens) {
@@ -424,7 +424,7 @@ static char **lsh_split_line(char *line, int *pargc) {
 		if (position >= bufsize) {
 			bufsize += LSH_TOK_BUFSIZE;
 			tokens_backup = tokens;
-			tokens = realloc(tokens, bufsize * sizeof(char*));
+			tokens = (char **)realloc(tokens, bufsize * sizeof(char*));
 			if (!tokens) {
 				free(tokens_backup);
 				return NULL;
