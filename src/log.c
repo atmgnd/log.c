@@ -303,7 +303,7 @@ void log_log(int level, const char *fmt, ...) {
 #else
 	struct timeval tv;
 #endif
-#define _LOG_BUF_SIZE 128
+#define _LOG_BUF_SIZE 192
 	int ms, log_size, buf_size = _LOG_BUF_SIZE;
 	struct tm lt;
 	FILE *log2;
@@ -313,14 +313,6 @@ void log_log(int level, const char *fmt, ...) {
 	if (level < L.level && (L.tel_client == INVALID_SOCKET || level < L.tel_level)) return;
 
 	lock();
-	if (L.size > 0 && L.fp && ftell(L.fp) > L.size) {
-#ifdef _MSC_VER
-		_chsize_s(_fileno(L.fp), 0);
-#else
-		ftruncate(fileno(L.fp), 0);
-#endif
-	}
-
 #ifdef _MSC_VER
 	ftime(&t);
 	localtime_s(&lt, &t.time);
@@ -349,6 +341,14 @@ void log_log(int level, const char *fmt, ...) {
 	}
 
 	if (level >= L.level ) {
+		if (L.size > 0 && L.fp && ftell(L.fp) > L.size) {
+#ifdef _MSC_VER
+			_chsize_s(_fileno(L.fp), 0);
+#else
+			ftruncate(fileno(L.fp), 0);
+#endif
+		}
+
 		log2 = L.fp ? L.fp : stderr;
 		fwrite(logbuf3, 1, log_size, log2);
 		fprintf(log2, "\n");
