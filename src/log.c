@@ -463,7 +463,7 @@ int log_server_loop(int port) {
 		inner_cmd_context icc = { 0 };
 #define BUF_SIZE 256
 		char linebuf[BUF_SIZE];
-		int buf_len = 0, post_nl = 0, no_nl_len, argc;
+		int buf_len = 0, post_nl, no_nl_len, argc;
 		static const char *tel_options =
 			"\xFF\xFB\x03"  // WILL Suppress Go Ahead
 			"\xFF\xFB\x01"  // WILL Echo
@@ -503,7 +503,7 @@ int log_server_loop(int port) {
 			}
 
 			rcv_len = clean_telnet_buffer(linebuf + buf_len, rcv_len);
-
+			post_nl = 0;
 			while (rcv_len) {
 				linebuf[buf_len + rcv_len] = '\0';
 				if (buf_len == 0 && post_nl) {// remove any prefix '\r' '\n'
