@@ -6,8 +6,8 @@
  * under the terms of the MIT license. See `log.c` for details.
  */
 
-#ifndef LOG_H
-#define LOG_H
+#ifndef LOGC_H
+#define LOGC_H
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -15,20 +15,28 @@ extern "C" {
 #include <stdio.h>
 #include <stdarg.h>
 
-enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
+#ifdef LOGC_LOG_LOCATION
+#define LOGCSTRIY(x) #x
+#define LOGC2STR(x) LOGCSTRIY(x)
+#define LOGC_LOCATION __FILE__ ":" LOGC2STR(__LINE__) " "
+#else
+#define LOGC_LOCATION
+#endif
 
-#define LOGT(...) log_log(LOG_TRACE, __VA_ARGS__)
-#define LOGD(...) log_log(LOG_DEBUG, __VA_ARGS__)
-#define LOGI(...)  log_log(LOG_INFO, __VA_ARGS__)
-#define LOGW(...)  log_log(LOG_WARN, __VA_ARGS__)
-#define LOGE(...) log_log(LOG_ERROR, __VA_ARGS__)
-#define LOGF(...) log_log(LOG_FATAL, __VA_ARGS__)
+enum { LOGC_TRACE, LOGC_DEBUG, LOGC_INFO, LOGC_WARN, LOGC_ERROR, LOGC_FATAL };
 
-void log_set_level(int level);
+#define LOGCT(...) logc_log(LOGC_TRACE, LOGC_LOCATION __VA_ARGS__)
+#define LOGCD(...) logc_log(LOGC_DEBUG, LOGC_LOCATION __VA_ARGS__)
+#define LOGCI(...) logc_log(LOGC_INFO,  LOGC_LOCATION __VA_ARGS__)
+#define LOGCW(...) logc_log(LOGC_WARN,  LOGC_LOCATION __VA_ARGS__)
+#define LOGCE(...) logc_log(LOGC_ERROR, LOGC_LOCATION __VA_ARGS__)
+#define LOGCF(...) logc_log(LOGC_FATAL, LOGC_LOCATION __VA_ARGS__)
 
-void log_init(const char *path, int size);
-void log_cleanup();
-void log_log(int level, const char *fmt, ...);
+void logc_set_level(int level);
+
+void logc_init(const char *path, int size);
+void logc_cleanup();
+void logc_log(int level, const char *fmt, ...);
 
 #ifdef __cplusplus
 }

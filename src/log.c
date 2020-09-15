@@ -68,7 +68,7 @@ static void unlock(void) {
 #endif
 }
 
-void log_set_level(int level) {
+void logc_set_level(int level) {
 	L.level = level;
 }
 
@@ -80,7 +80,7 @@ static inline unsigned int thread_id() {
 #endif
 }
 
-void log_init(const char *path, int size) {
+void logc_init(const char *path, int size) {
 	L.fp = fopen(path, "ab+");
 
 #ifdef _MSC_VER
@@ -96,10 +96,10 @@ void log_init(const char *path, int size) {
 	pthread_mutexattr_destroy(&attr);
 #endif
 	L.size = size;
-	L.level = LOG_TRACE;
+	L.level = LOGC_TRACE;
 }
 
-void log_cleanup() {
+void logc_cleanup() {
 	if (L.fp) {
 		fclose(L.fp);
 	}
@@ -113,7 +113,7 @@ void log_cleanup() {
 	}
 }
 
-void log_log(int level, const char *fmt, ...) {
+void logc_log(int level, const char *fmt, ...) {
 	if (level < L.level) {
 		return;
 	}

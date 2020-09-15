@@ -1,3 +1,5 @@
+
+// #define LOGC_LOG_LOCATION
 #include "log.h"
 
 #ifdef _MSC_VER
@@ -8,13 +10,14 @@
 int main()
 {
 #ifdef _MSC_VER
-	log_init("D:\\ttmp\\xx.log", 5 * 1024);
+	logc_init("D:\\ttmp\\xx.log", 5 * 1024);
 #else
-	log_init("./xx.log", 5 * 1024);
+	logc_init("./xx.log", 5 * 1024);
 #endif
 
-	log_log(LOG_TRACE, "Hello %s", "world");
-	LOGD("%s", "Hello world");
+	logc_log(LOGC_TRACE, "%s %s", __DATE__, __TIME__);
+	logc_log(LOGC_TRACE, "Hello %s", "world");
+	LOGCD("%s", "Hello world");
 
 #ifdef _MSC_VER
 	system("pause");
